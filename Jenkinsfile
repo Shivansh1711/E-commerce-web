@@ -1,51 +1,63 @@
 pipeline {
     agent any
-
-    tools {
-        git 'Default'  // Ensure Git is available
-    }
-
     environment {
-        DOCKER_BUILDKIT = 1
+        DOCKER_COMPOSE_FILE = 'docker-compose.yml'
     }
-
     stages {
         stage('Cleanup') {
             steps {
                 script {
-                    bat 'docker compose down || exit 0'
-                    bat 'docker system prune -f || exit 0'
                     deleteDir()
                 }
             }
         }
-
         stage('Git Clone') {
             steps {
-                echo 'Source code already checked out by Jenkins.'
+                git 'https://github.com/Shivansh1711/E-commerce-web.git'
             }
         }
-
-        stage('Build & Run with Docker Compose') {
+        stage('Clear previous Builds') {
             steps {
-                bat 'docker compose -f docker-compose.yml up -d --build'
+                script {
+                    // Ensure the docker-compose.yml is present before proceeding
+                    if (fileExists(DOCKER_COMPOSE_FILE)) {
+                        bat 'docker-compose -f docker-compose.yml down || exit 0'
+                    } else {
+                        error "docker-compose.yml not found."
+                    }
+                }
             }
         }
-
+        stage('Docker Compose') {
+            steps {
+                script {
+                    // Ensure the docker-compose.yml is present before proceeding
+                    if (fileExists(DOCKER_COMPOSE_FILE)) {
+                        bat 'docker-compose -f docker-compose.yml up -d --build || exit 0'
+                    } else {
+                        error "docker-compose.yml not found."
+                    }
+                }
+            }
+        }
         stage('Testing') {
             steps {
-                bat '''
-                    timeout /t 10
-                    curl http://localhost:3000 || exit 1
-                '''
+                script {
+                    // Example: health check or basic test
+                    bat 'curl http://localhost:3000 || exit 1'
+                }
             }
         }
     }
-
     post {
         always {
-            echo "Tearing down containers after build..."
-            bat 'docker compose down || exit 0'
+            script {
+                if (fileExists(DOCKER_COMPOSE_FILE)) {
+                    bat 'docker-compose -f docker-compose.yml down || exit 0'
+                } else {
+                    echo 'docker-compose.yml not found, skipping cleanup.'
+                }
+            }
         }
     }
 }
