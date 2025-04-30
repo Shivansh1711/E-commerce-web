@@ -1,7 +1,12 @@
+
+
 services:
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
     ports:
       - "3000:3000"
+    volumes:
+      - .:/app
+    environment:
+      - NODE_ENV=production
+    restart: always
