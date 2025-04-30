@@ -1,8 +1,9 @@
-
 services:
   web:
     build: .
+    container_name: ecomm-web
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
+    restart: unless-stopped
