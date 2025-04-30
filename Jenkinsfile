@@ -1,35 +1,51 @@
 pipeline {
     agent any
+
+    tools {
+        git 'Default'  // Ensure Git is available
+    }
+
+    environment {
+        DOCKER_BUILDKIT = 1
+    }
+
     stages {
         stage('Cleanup') {
             steps {
                 script {
+                    bat 'docker compose down || exit 0'
+                    bat 'docker system prune -f || exit 0'
                     deleteDir()
                 }
             }
         }
+
         stage('Git Clone') {
             steps {
-                bat 'git clone https://github.com/Shivansh1711/E-commerce-web.git .'
+                echo 'Source code already checked out by Jenkins.'
             }
         }
-        stage('Clear previous Builds') {
+
+        stage('Build & Run with Docker Compose') {
             steps {
-                bat 'docker compose down'
+                bat 'docker compose -f docker-compose.yml up -d --build'
             }
         }
-        stage('Docker Compose') {
-            steps {
-                bat 'docker compose up -d --build'
-            }
-        }
+
         stage('Testing') {
             steps {
-                script {
-                    // Example: health check or basic test
-                    bat 'curl http://localhost:3000 || exit 1'
-                }
+                bat '''
+                    timeout /t 10
+                    curl http://localhost:3000 || exit 1
+                '''
             }
+        }
+    }
+
+    post {
+        always {
+            echo "Tearing down containers after build..."
+            bat 'docker compose down || exit 0'
         }
     }
 }
